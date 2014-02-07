@@ -1,3 +1,5 @@
+// +build exec_chroot
+
 package chroot
 
 import (
