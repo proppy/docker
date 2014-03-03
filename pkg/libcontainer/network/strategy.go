@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+
 	"github.com/dotcloud/docker/pkg/libcontainer"
 )
 
@@ -10,7 +11,8 @@ var (
 )
 
 var strategies = map[string]NetworkStrategy{
-	"veth": &Veth{},
+	"veth":  &Veth{},
+	"netns": &NetNS{},
 }
 
 // NetworkStrategy represents a specific network configuration for
