@@ -3,6 +3,16 @@ package daemon
 import (
 	"container/list"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/dotcloud/docker/archive"
 	"github.com/dotcloud/docker/daemon/execdriver"
 	"github.com/dotcloud/docker/daemon/execdriver/execdrivers"
@@ -22,15 +32,6 @@ import (
 	"github.com/dotcloud/docker/pkg/sysinfo"
 	"github.com/dotcloud/docker/runconfig"
 	"github.com/dotcloud/docker/utils"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
 )
 
 // Set the max depth to the aufs default that most

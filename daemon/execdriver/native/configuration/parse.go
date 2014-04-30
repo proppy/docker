@@ -2,12 +2,13 @@ package configuration
 
 import (
 	"fmt"
-	"github.com/dotcloud/docker/pkg/libcontainer"
-	"github.com/dotcloud/docker/utils"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/dotcloud/docker/pkg/libcontainer"
+	"github.com/dotcloud/docker/utils"
 )
 
 type Action func(*libcontainer.Container, interface{}, string) error

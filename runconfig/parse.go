@@ -1,15 +1,17 @@
 package runconfig
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"strings"
+
 	"github.com/dotcloud/docker/nat"
 	"github.com/dotcloud/docker/opts"
 	flag "github.com/dotcloud/docker/pkg/mflag"
 	"github.com/dotcloud/docker/pkg/sysinfo"
 	"github.com/dotcloud/docker/utils"
-	"io/ioutil"
-	"path"
-	"strings"
 )
 
 var (
@@ -47,20 +49,21 @@ func parseRun(cmd *flag.FlagSet, args []string, sysInfo *sysinfo.SysInfo) (*Conf
 		flLxcOpts     opts.ListOpts
 		flEnvFile     opts.ListOpts
 
-		flAutoRemove      = cmd.Bool([]string{"#rm", "-rm"}, false, "Automatically remove the container when it exits (incompatible with -d)")
-		flDetach          = cmd.Bool([]string{"d", "-detach"}, false, "Detached mode: Run container in the background, print new container id")
-		flNetwork         = cmd.Bool([]string{"n", "-networking"}, true, "Enable networking for this container")
-		flPrivileged      = cmd.Bool([]string{"#privileged", "-privileged"}, false, "Give extended privileges to this container")
-		flPublishAll      = cmd.Bool([]string{"P", "-publish-all"}, false, "Publish all exposed ports to the host interfaces")
-		flStdin           = cmd.Bool([]string{"i", "-interactive"}, false, "Keep stdin open even if not attached")
-		flTty             = cmd.Bool([]string{"t", "-tty"}, false, "Allocate a pseudo-tty")
-		flContainerIDFile = cmd.String([]string{"#cidfile", "-cidfile"}, "", "Write the container ID to the file")
-		flEntrypoint      = cmd.String([]string{"#entrypoint", "-entrypoint"}, "", "Overwrite the default entrypoint of the image")
-		flHostname        = cmd.String([]string{"h", "-hostname"}, "", "Container host name")
-		flMemoryString    = cmd.String([]string{"m", "-memory"}, "", "Memory limit (format: <number><optional unit>, where unit = b, k, m or g)")
-		flUser            = cmd.String([]string{"u", "-user"}, "", "Username or UID")
-		flWorkingDir      = cmd.String([]string{"w", "-workdir"}, "", "Working directory inside the container")
-		flCpuShares       = cmd.Int64([]string{"c", "-cpu-shares"}, 0, "CPU shares (relative weight)")
+		flAutoRemove       = cmd.Bool([]string{"#rm", "-rm"}, false, "Automatically remove the container when it exits (incompatible with -d)")
+		flDetach           = cmd.Bool([]string{"d", "-detach"}, false, "Detached mode: Run container in the background, print new container id")
+		flNetwork          = cmd.Bool([]string{"n", "-networking"}, true, "Enable networking for this container")
+		flPrivileged       = cmd.Bool([]string{"#privileged", "-privileged"}, false, "Give extended privileges to this container")
+		flPublishAll       = cmd.Bool([]string{"P", "-publish-all"}, false, "Publish all exposed ports to the host interfaces")
+		flStdin            = cmd.Bool([]string{"i", "-interactive"}, false, "Keep stdin open even if not attached")
+		flTty              = cmd.Bool([]string{"t", "-tty"}, false, "Allocate a pseudo-tty")
+		flContainerIDFile  = cmd.String([]string{"#cidfile", "-cidfile"}, "", "Write the container ID to the file")
+		flEntrypoint       = cmd.String([]string{"#entrypoint", "-entrypoint"}, "", "Overwrite the default entrypoint of the image")
+		flHostname         = cmd.String([]string{"h", "-hostname"}, "", "Container host name")
+		flMemoryString     = cmd.String([]string{"m", "-memory"}, "", "Memory limit (format: <number><optional unit>, where unit = b, k, m or g)")
+		flUser             = cmd.String([]string{"u", "-user"}, "", "Username or UID")
+		flWorkingDir       = cmd.String([]string{"w", "-workdir"}, "", "Working directory inside the container")
+		flCpuShares        = cmd.Int64([]string{"c", "-cpu-shares"}, 0, "CPU shares (relative weight)")
+		flExecDriverConfig = cmd.String([]string{"-execdriver-config"}, "", "Set the configuration for execution driver")
 
 		// For documentation purpose
 		_ = cmd.Bool([]string{"#sig-proxy", "-sig-proxy"}, true, "Proxify all received signal to the process (even in non-tty mode)")
@@ -197,26 +200,34 @@ func parseRun(cmd *flag.FlagSet, args []string, sysInfo *sysinfo.SysInfo) (*Conf
 	// boo, there's no debug output for docker run
 	//utils.Debugf("Environment variables for the container: %#v", envVariables)
 
+	var driverConfig map[string][]string
+	if *flExecDriverConfig != "" {
+		if err := json.Unmarshal([]byte(*flExecDriverConfig), &driverConfig); err != nil {
+			return nil, nil, cmd, fmt.Errorf("failed to parse execdriver-config: %v", err)
+		}
+	}
+
 	config := &Config{
-		Hostname:        hostname,
-		Domainname:      domainname,
-		PortSpecs:       nil, // Deprecated
-		ExposedPorts:    ports,
-		User:            *flUser,
-		Tty:             *flTty,
-		NetworkDisabled: !*flNetwork,
-		OpenStdin:       *flStdin,
-		Memory:          flMemory,
-		CpuShares:       *flCpuShares,
-		AttachStdin:     flAttach.Get("stdin"),
-		AttachStdout:    flAttach.Get("stdout"),
-		AttachStderr:    flAttach.Get("stderr"),
-		Env:             envVariables,
-		Cmd:             runCmd,
-		Image:           image,
-		Volumes:         flVolumes.GetMap(),
-		Entrypoint:      entrypoint,
-		WorkingDir:      *flWorkingDir,
+		Hostname:         hostname,
+		Domainname:       domainname,
+		PortSpecs:        nil, // Deprecated
+		ExposedPorts:     ports,
+		User:             *flUser,
+		Tty:              *flTty,
+		NetworkDisabled:  !*flNetwork,
+		OpenStdin:        *flStdin,
+		Memory:           flMemory,
+		CpuShares:        *flCpuShares,
+		AttachStdin:      flAttach.Get("stdin"),
+		AttachStdout:     flAttach.Get("stdout"),
+		AttachStderr:     flAttach.Get("stderr"),
+		Env:              envVariables,
+		Cmd:              runCmd,
+		Image:            image,
+		Volumes:          flVolumes.GetMap(),
+		Entrypoint:       entrypoint,
+		WorkingDir:       *flWorkingDir,
+		ExecDriverConfig: driverConfig,
 	}
 
 	hostConfig := &HostConfig{

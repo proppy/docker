@@ -4,15 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dotcloud/docker/archive"
-	"github.com/dotcloud/docker/daemon/execdriver"
-	"github.com/dotcloud/docker/daemon/graphdriver"
-	"github.com/dotcloud/docker/engine"
-	"github.com/dotcloud/docker/image"
-	"github.com/dotcloud/docker/links"
-	"github.com/dotcloud/docker/nat"
-	"github.com/dotcloud/docker/runconfig"
-	"github.com/dotcloud/docker/utils"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,6 +13,16 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/dotcloud/docker/archive"
+	"github.com/dotcloud/docker/daemon/execdriver"
+	"github.com/dotcloud/docker/daemon/graphdriver"
+	"github.com/dotcloud/docker/engine"
+	"github.com/dotcloud/docker/image"
+	"github.com/dotcloud/docker/links"
+	"github.com/dotcloud/docker/nat"
+	"github.com/dotcloud/docker/runconfig"
+	"github.com/dotcloud/docker/utils"
 )
 
 const DefaultPathEnv = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -321,8 +322,11 @@ func (container *Container) Attach(stdin io.ReadCloser, stdinCloser io.Closer, s
 func populateCommand(c *Container, env []string) {
 	var (
 		en           *execdriver.Network
-		driverConfig = make(map[string][]string)
+		driverConfig = c.Config.ExecDriverConfig
 	)
+	if driverConfig == nil {
+		driverConfig = make(map[string][]string)
+	}
 
 	en = &execdriver.Network{
 		Mtu:       c.daemon.config.Mtu,
@@ -341,6 +345,7 @@ func populateCommand(c *Container, env []string) {
 
 	// TODO: this can be removed after lxc-conf is fully deprecated
 	mergeLxcConfIntoOptions(c.hostConfig, driverConfig)
+	log.Printf("driverConfig: %v", driverConfig)
 
 	resources := &execdriver.Resources{
 		Memory:     c.Config.Memory,
