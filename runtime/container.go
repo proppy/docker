@@ -4,15 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dotcloud/docker/archive"
-	"github.com/dotcloud/docker/engine"
-	"github.com/dotcloud/docker/image"
-	"github.com/dotcloud/docker/links"
-	"github.com/dotcloud/docker/nat"
-	"github.com/dotcloud/docker/runconfig"
-	"github.com/dotcloud/docker/runtime/execdriver"
-	"github.com/dotcloud/docker/runtime/graphdriver"
-	"github.com/dotcloud/docker/utils"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,6 +13,16 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/dotcloud/docker/archive"
+	"github.com/dotcloud/docker/engine"
+	"github.com/dotcloud/docker/image"
+	"github.com/dotcloud/docker/links"
+	"github.com/dotcloud/docker/nat"
+	"github.com/dotcloud/docker/runconfig"
+	"github.com/dotcloud/docker/runtime/execdriver"
+	"github.com/dotcloud/docker/runtime/graphdriver"
+	"github.com/dotcloud/docker/utils"
 )
 
 const DefaultPathEnv = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -358,7 +359,7 @@ func (container *Container) Attach(stdin io.ReadCloser, stdinCloser io.Closer, s
 	})
 }
 
-func populateCommand(c *Container) {
+func populateCommand(c *Container) error {
 	var (
 		en           *execdriver.Network
 		driverConfig = make(map[string][]string)
@@ -377,6 +378,14 @@ func populateCommand(c *Container) {
 			IPAddress:   network.IPAddress,
 			IPPrefixLen: network.IPPrefixLen,
 		}
+	}
+
+	if netContainer := c.hostConfig.UseContainerNetwork; netContainer != "" {
+		nc := c.runtime.Get(netContainer)
+		if nc == nil {
+			return fmt.Errorf("no such container to join network: %q", netContainer)
+		}
+		en.ContainerID = nc.ID
 	}
 
 	// TODO: this can be removed after lxc-conf is fully deprecated
@@ -402,6 +411,7 @@ func populateCommand(c *Container) {
 		Resources:  resources,
 	}
 	c.command.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return nil
 }
 
 func (container *Container) ArgsAsString() string {
@@ -559,7 +569,9 @@ func (container *Container) Start() (err error) {
 		return err
 	}
 
-	populateCommand(container)
+	if err := populateCommand(container); err != nil {
+		return err
+	}
 	container.command.Env = env
 
 	if err := setupMountsForContainer(container, envPath); err != nil {
