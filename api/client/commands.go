@@ -127,13 +127,23 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	_, err = exec.LookPath("git")
 	hasGit := err == nil
 	if cmd.Arg(0) == "-" {
-		// As a special case, 'docker build -' will build from an empty context with the
-		// contents of stdin as a Dockerfile
-		dockerfile, err := ioutil.ReadAll(cli.in)
+		// As a special case, 'docker build -' will build from either an empty context with the
+		// contents of stdin as a Dockerfile, or a tar-ed context from stdin.
+		buf := bufio.NewReader(cli.in)
+		magic, err := buf.Peek(10)
 		if err != nil {
 			return err
 		}
-		context, err = archive.Generate("Dockerfile", string(dockerfile))
+
+		if archive.DetectCompression(magic) == archive.Uncompressed {
+			dockerfile, err := ioutil.ReadAll(buf)
+			if err != nil {
+				return err
+			}
+			context, err = archive.Generate("Dockerfile", string(dockerfile))
+		} else {
+			context = ioutil.NopCloser(buf)
+		}
 	} else if utils.IsURL(cmd.Arg(0)) && (!utils.IsGIT(cmd.Arg(0)) || !hasGit) {
 		isRemote = true
 	} else {
