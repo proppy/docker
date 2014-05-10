@@ -189,7 +189,7 @@ you should consider using `ENTRYPOINT` in combination with `CMD`. See
 If the user specifies arguments to `docker run` then they will override the
 default specified in CMD.
 
-> **Note**:
+> **Note:**
 > don't confuse `RUN` with `CMD`. `RUN` actually runs a command and commits
 > the result; `CMD` does not execute anything at build time, but specifies
 > the intended command for the image.
@@ -217,7 +217,7 @@ The environment variables set using `ENV` will persist when a container is run
 from the resulting image. You can view the values using `docker inspect`, and
 change them using `docker run --env <key>=<value>`.
 
-> **Note**:
+> **Note:**
 > One example where this can cause unexpected consequenses, is setting
 > `ENV DEBIAN_FRONTEND noninteractive`. Which will persist when the container
 > is run interactively; for example: `docker run -t -i image bash`
@@ -237,12 +237,17 @@ destination container.
 
 All new files and directories are created with mode 0755, uid and gid 0.
 
-> **Note**:
-> If you build using STDIN (`docker build - < somefile`), there is no
-> build context, so the Dockerfile can only contain an URL based ADD
-> statement.
-
-> **Note**:
+> **Note:**
+> There isn't a build context when a Dockerfile is passed through STDIN
+> (e.g. docker build - < Dockerfile).
+> Therefore, the Dockerfile can only contain URL-based ADD statements.
+>
+> You can also pass a compressed archive through STDIN:
+> (`docker build - < archive.tar.gz`), the `Dockerfile` at the root of
+> the archive and the rest of the archive will get used at the context
+> of the build.
+>
+> **Note:**
 > If your URL files are protected using authentication, you will need to
 > use an `RUN wget` , `RUN curl`
 > or other tool from within the container as ADD does not support
@@ -321,7 +326,7 @@ execute in `/bin/sh -c`:
     FROM ubuntu
     ENTRYPOINT wc -l -
 
-For example, that Dockerfile's image will *always* take stdin as input
+For example, that Dockerfile's image will *always* take STDIN as input
 ("-") and print the number of lines ("-l"). If you wanted to make this
 optional but default, you could use a CMD:
 
