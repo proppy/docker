@@ -119,6 +119,49 @@ func TestAddWholeDirToRoot(t *testing.T) {
 	logDone("build - add whole directory to root")
 }
 
+func TestContextTar(t *testing.T) {
+	buildDirectory := filepath.Join(workingDirectory, "build_tests", "TestContextTar")
+	buildBuilderCmd := exec.Command(dockerBinary, "build", "-t", "contexttarbuilder", ".")
+	buildBuilderCmd.Dir = buildDirectory
+
+	out, exitCode, err := runCommandWithOutput(buildBuilderCmd)
+	if err != nil || exitCode != 0 {
+		t.Fatalf("builder build failed to complete: %v %v", out, err)
+	}
+
+	builderCmd := exec.Command(dockerBinary, "run", "contexttarbuilder")
+	stdout, err := builderCmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("failed to get builder stdout, %v", err)
+	}
+	buildRunnerCmd := exec.Command(dockerBinary, "build", "-t", "contexttarrunner", "-")
+	buildRunnerCmd.Stdin = stdout
+
+	err = builderCmd.Start()
+	if err != nil {
+		t.Fatalf("failed to start builder, %v", err)
+	}
+
+	out, exitCode, err = runCommandWithOutput(buildRunnerCmd)
+	if err != nil || exitCode != 0 {
+		t.Fatalf("runner build failed to complete: %v %v", out, err)
+	}
+
+	err = builderCmd.Wait()
+	if err != nil {
+		t.Fatalf("builder run failed, %v", err)
+	}
+
+	out, exitCode, err = cmd(t, "run", "contexttarrunner")
+	if out != "bar\n" {
+		t.Fatalf("runner produced invalid output: %q, expected %q", out, "bar")
+	}
+
+	deleteImages("contexttarbuilder")
+	deleteImages("contexttarrunner")
+	logDone("build - build an image with a context tar")
+}
+
 // TODO: TestCaching
 
 // TODO: TestADDCacheInvalidation
