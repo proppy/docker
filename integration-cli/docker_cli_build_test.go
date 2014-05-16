@@ -120,8 +120,8 @@ func TestAddWholeDirToRoot(t *testing.T) {
 	logDone("build - add whole directory to root")
 }
 
-func TestContextTar(t *testing.T) {
-	buildDirectory := filepath.Join(workingDirectory, "build_tests", "TestContextTar")
+func testContextTar(t *testing.T, path string) {
+	buildDirectory := filepath.Join(workingDirectory, "build_tests", "TestContextTar", path)
 	buildBuilderCmd := exec.Command(dockerBinary, "build", "-t", "contexttarbuilder", ".")
 	buildBuilderCmd.Dir = buildDirectory
 
@@ -161,6 +161,14 @@ func TestContextTar(t *testing.T) {
 	deleteImages("contexttarbuilder")
 	deleteImages("contexttarrunner")
 	logDone("build - build an image with a context tar")
+}
+
+func TestContextTarGzip(t *testing.T) {
+	testContextTar(t, "gzip")
+}
+
+func TestContextTarNoCompression(t *testing.T) {
+	testContextTar(t, "nocompression")
 }
 
 func TestNoContext(t *testing.T) {
