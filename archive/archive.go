@@ -41,6 +41,12 @@ const (
 	Xz
 )
 
+func IsTarball(header []byte) bool {
+	r := tar.NewReader(bytes.NewBuffer(header))
+	_, err := r.Next()
+	return err != nil
+}
+
 func DetectCompression(source []byte) Compression {
 	for compression, m := range map[Compression][]byte{
 		Bzip2: {0x42, 0x5A, 0x68},

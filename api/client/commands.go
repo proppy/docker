@@ -34,6 +34,10 @@ import (
 	"github.com/dotcloud/docker/utils"
 )
 
+const (
+	tarHeaderSize = 512
+)
+
 func (cli *DockerCli) CmdHelp(args ...string) error {
 	if len(args) > 0 {
 		method, exists := cli.getMethod(args[0])
@@ -130,12 +134,12 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 		// As a special case, 'docker build -' will build from either an empty context with the
 		// contents of stdin as a Dockerfile, or a tar-ed context from stdin.
 		buf := bufio.NewReader(cli.in)
-		magic, err := buf.Peek(10)
+		magic, err := buf.Peek(tarHeaderSize)
 		if err != nil {
 			return err
 		}
 
-		if archive.DetectCompression(magic) == archive.Uncompressed {
+		if !archive.IsTarball(magic) {
 			dockerfile, err := ioutil.ReadAll(buf)
 			if err != nil {
 				return err
