@@ -335,7 +335,7 @@ func TestIsSecure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		if sec := IsSecure(tt.addr, tt.insecureRegistries); sec != tt.expected {
-			t.Errorf("IsSecure failed for %q %v, expected %v got %v", tt.addr, tt.insecureRegistries, tt.expected, sec)
+			t.Fatalf("IsSecure failed for %q %v, expected %v got %v", tt.addr, tt.insecureRegistries, tt.expected, sec)
 		}
 	}
 }
